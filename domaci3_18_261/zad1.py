@@ -9,6 +9,7 @@ from skimage import io
 from skimage import filters
 from skimage import color
 from scipy import ndimage
+from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -71,9 +72,35 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     plt.figure()
     io.imshow(diag_45*1.)
     
+    img_horizontal = horizontal * magnitude
+    edges_horizontal = img_horizontal
+    for i in range(edges_horizontal.shape[0]):
+        peaks, _ = find_peaks(edges_horizontal[i, :], height=threshold_low)
+        arr = np.ones(edges_horizontal.shape[1], dtype=bool)
+        arr[peaks] = False
+        if len(peaks) != 0:
+            edges_horizontal[i, arr] = 0
+    plt.figure()
+    io.imshow(edges_horizontal, cmap='gray')
+    
+    img_vertical = vertical * magnitude
+    edges_vertical = img_vertical
+    for i in range(edges_vertical.shape[1]):
+        peaks, _ = find_peaks(edges_vertical[:, i], height=threshold_low)
+        arr = np.ones(edges_vertical.shape[0], dtype=bool)
+        arr[peaks] = False
+        if len(peaks) != 0:
+            edges_vertical[arr, i] = 0
+    plt.figure()
+    io.imshow(edges_vertical, cmap='gray')
+    
+    edges = edges_horizontal + edges_vertical
+    plt.figure()
+    io.imshow(edges, cmap='gray')
+    
 if __name__ == "__main__":
     img_in = imread('../sekvence/clocks/clock1.png')
     img_in = color.rgb2gray(color.rgba2rgb(img_in))
-    canny_edge_detection(img_in, 4, 2, 5)
+    canny_edge_detection(img_in, 4, 0, 5)
     # plt.figure()
     # io.imshow(img_in)
