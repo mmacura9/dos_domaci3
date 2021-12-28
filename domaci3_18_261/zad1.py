@@ -138,15 +138,34 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     
     plt.figure(figsize=(12,9), dpi=80)
     io.imshow(output*angle, cmap='gray')
-    return output*magnitude, output*angle
+    return output*magnitude#, output*angle
 
-def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_gaps: int, tolerancy: int) -> np.array:
-    print("USAO")
+def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_gaps: int, tolerancy: float) -> np.array:
+    theta = math.radians(line[0])
+    rho = line[1]
+    y = np.arange(img_edges.shape[1]*1.)
+    x = np.arange(img_edges.shape[0]*1.)
+    matx = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
+    maty = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
+    for i in range(img_edges.shape[0]):
+        maty[i, :] = y
+        matx[:, i] = x
+    output = (matx*cos(theta)+maty*sin(theta)) >= rho - tolerancy
+    output = logical_and(output,(matx*cos(theta)+maty*sin(theta)) <= rho + tolerancy)
+    plt.figure(figsize=(12,9), dpi=80)
+    io.imshow(output*1., cmap='gray')
+    
+    plt.figure(figsize=(12,9), dpi=80)
+    io.imshow(output*img_edges, cmap='gray')
+    
     
 if __name__ == "__main__":
     img_in = imread('../sekvence/clocks/clock8.jpg')
     img_in = color.rgb2gray(img_in)
     img_in = skimage.img_as_float(img_in)
-    canny_edge_detection(img_in, 0.5, 0.2, 0.55)
+    canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
+    theta = 141
+    rho = cos(math.radians(theta-45))*sqrt(canny.shape[0]*canny.shape[0] + canny.shape[1]*canny.shape[1])/2
+    get_line_segments(canny, np.array([theta, rho]), 4, 2, 1)
     # plt.figure()
     # io.imshow(img_in)
