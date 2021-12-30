@@ -15,6 +15,7 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import numpy as np
 import math
+import random
 
 def make_hist(img_in: np.array) -> np.array:
     num_hist = np.zeros(256, dtype=int)
@@ -111,8 +112,22 @@ def bw_label(img_bin: np.array) -> np.array:
                 if label[i, j] == 0:
                     label[i, j] = last_ind
                     last_ind = last_ind+1
+    
+    
+    random.seed(10)
+    
+    img_colored = np.zeros((label.shape[0], label.shape[1], 3), dtype=float)
+    
+    for i in range(1, last_ind):
+        r = random.random()
+        g = random.random()
+        b = random.random()
+        img_colored[label == i, 0] = r
+        img_colored[label == i, 1] = g
+        img_colored[label == i, 2] = b
+    
     plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(label/(last_ind-1), cmap='gray')
+    io.imshow(img_colored)
     return label
 
 def coin_classification(img_in: np.array) -> []:
@@ -129,12 +144,10 @@ def coin_classification(img_in: np.array) -> []:
     plt.figure()
     plt.plot(hist)
     otsu = filters.threshold_otsu(hist)
-    print(otsu)
-    print(np.sum(hist>otsu), np.sum(logical_and(hist>0, hist<=otsu)))
+    return np.sum(hist>otsu), np.sum(hist<=otsu)
 
 if __name__ == "__main__":
     img_in = imread('../sekvence/coins/coins9.jpg')
     plt.figure(figsize=(12, 9), dpi=80)
     plt.imshow(img_in)
-    coin_classification(img_in)
-    
+    print(coin_classification(img_in))
