@@ -66,16 +66,18 @@ def coin_mask(img_in: np.array) -> np.array:
     
     plt.figure(figsize=(8,4), dpi=80);
     plt.imshow(mask*1.0, cmap='gray')
-    mask1 = np.copy(mask)
-    for i in range(1, mask.shape[0]-1):
-        for j in range(1, mask.shape[1]-1):
-            if mask[i, j] == True:
-                for k in range(-1, 2):
-                    for l in range(-1, 2):
-                        mask1[i+k, j+l] = True
+    
+    kernel = np.array([[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]])
+    
+    mask = ndimage.correlate(mask, kernel)
+    mask = mask>0
+    
+    mask = ndimage.correlate(mask, kernel)
+    mask = mask==1
+    
     plt.figure(figsize=(8,4), dpi=80);
-    plt.imshow(mask1*1.0, cmap='gray')
-    return mask1
+    plt.imshow(mask*1.0, cmap='gray')
+    return mask
 
 def bw_label(img_bin: np.array) -> np.array:
     label = np.zeros(img_bin.shape, dtype=int)
@@ -122,10 +124,13 @@ def coin_classification(img_in: np.array) -> []:
     for i in range(1, maks+1):
         mask1 = (label==i)
         hist[i-1] = np.sum(mask1)
-    mean = np.mean(hist[hist>0])
-    
-    print(mean)
-    print(np.sum(hist>mean), np.sum(logical_and(hist>0, hist<mean)))
+        
+    hist = hist[hist>0]
+    plt.figure()
+    plt.plot(hist)
+    otsu = filters.threshold_otsu(hist)
+    print(otsu)
+    print(np.sum(hist>otsu), np.sum(logical_and(hist>0, hist<=otsu)))
 
 if __name__ == "__main__":
     img_in = imread('../sekvence/coins/coins9.jpg')
