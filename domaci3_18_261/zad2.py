@@ -17,14 +17,6 @@ import numpy as np
 import math
 import random
 
-def make_hist(img_in: np.array) -> np.array:
-    num_hist = np.zeros(256, dtype=int)
-    for i in range(0, 256):
-        # number of elements that are equal to i
-        num_hist[i] = np.sum(img_in == i)
-    # normalizing the histogram
-    return num_hist/img_in.size
-
 def coin_mask(img_in: np.array) -> np.array:
     # img = filters.gaussian(img_in, sigma=0.5, truncate=6)
     
@@ -68,8 +60,8 @@ def coin_mask(img_in: np.array) -> np.array:
     plt.figure(figsize=(8,4), dpi=80);
     plt.imshow(mask*1.0, cmap='gray')
     
-    kernel = np.array([[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]])
-    
+    # kernel = np.array([[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]])
+    kernel = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]])
     mask = ndimage.correlate(mask, kernel)
     mask = mask>0
     
@@ -113,7 +105,6 @@ def bw_label(img_bin: np.array) -> np.array:
                     label[i, j] = last_ind
                     last_ind = last_ind+1
     
-    
     random.seed(10)
     
     img_colored = np.zeros((label.shape[0], label.shape[1], 3), dtype=float)
@@ -137,17 +128,39 @@ def coin_classification(img_in: np.array) -> []:
     maks = np.max(label)
     hist = np.zeros(maks, dtype=int)
     for i in range(1, maks+1):
-        mask1 = (label==i)
-        hist[i-1] = np.sum(mask1)
-        
-    hist = hist[hist>0]
+        hist[i-1] = np.sum(label==i)
+    ind = hist>0
     plt.figure()
-    plt.plot(hist)
-    otsu = filters.threshold_otsu(hist)
-    return np.sum(hist>otsu), np.sum(hist<=otsu)
+    plt.plot(hist[ind])
+    otsu = filters.threshold_otsu(hist[ind])
+    r1 = 0.7
+    g1 = 0.2
+    b1 = 0.2
+    
+    r2 = 0.2
+    g2 = 0.7
+    b2 = 0.2
+    img_out = np.zeros((label.shape[0], label.shape[1], 3), dtype=float)
+    
+    for i in range(1, maks+1):
+        img = label == i
+        suma = np.sum(img)
+        if suma != 0 and suma <=otsu:
+            img_out[img, 0] = r1
+            img_out[img, 1] = g1
+            img_out[img, 2] = b1
+        if suma>otsu:
+            img_out[img, 0] = r2
+            img_out[img, 1] = g2
+            img_out[img, 2] = b2
+            
+    plt.figure(figsize=(12, 9), dpi=80)
+    io.imshow(img_out)
+    
+    return np.sum(hist[ind]<=otsu), np.sum(hist[ind]>otsu)
 
 if __name__ == "__main__":
-    img_in = imread('../sekvence/coins/coins9.jpg')
+    img_in = imread('../sekvence/coins/coins1.jpg')
     plt.figure(figsize=(12, 9), dpi=80)
     plt.imshow(img_in)
     print(coin_classification(img_in))
