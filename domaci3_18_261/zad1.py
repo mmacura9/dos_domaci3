@@ -145,26 +145,102 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     return output*magnitude  # , output*angle
 
 
-def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_gaps: int, tolerancy: float) -> tuple:
-    theta = math.radians(line[0])
-    rho = line[1]
-    y = np.arange(img_edges.shape[1]*1.)
-    x = np.arange(img_edges.shape[0]*1.)
-    matx = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
-    maty = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
-    for i in range(img_edges.shape[0]):
-        maty[i, :] = y
-        matx[:, i] = x
-    output = (matx*cos(theta)+maty*sin(theta)) >= rho - tolerancy
-    output = logical_and(output, (matx*cos(theta)+maty *
-                         sin(theta)) <= rho + tolerancy)
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(output*1., cmap='gray')
+def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_gaps: int, tolerancy: int) -> tuple:
+    # theta = math.radians(line[0])
+    # rho = line[1]
+    # y = np.arange(img_edges.shape[1]*1.)
+    # x = np.arange(img_edges.shape[0]*1.)
+    # matx = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
+    # maty = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
+    # for i in range(img_edges.shape[0]):
+    #     maty[i, :] = y
+    #     matx[:, i] = x
+    # output = (matx*cos(theta)+maty*sin(theta)) >= rho - tolerancy
+    # output = logical_and(output, (matx*cos(theta)+maty *
+    #                      sin(theta)) <= rho + tolerancy)
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(output*1., cmap='gray')
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(output*img_edges, cmap='gray')
-    tuple_output = []
-    img = output(img_edges)
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(output*img_edges, cmap='gray')
+    # tuple_output = []
+    # img = output(img_edges)
+    theta = line[0]
+    rho = line[1]
+    originy = np.arange(tolerancy, img_edges.shape[0]-tolerancy)
+    originx = np.arange(tolerancy, img_edges.shape[1]-tolerancy)
+    
+    x = np.round((rho - originx * np.cos(theta)) / np.sin(theta))
+    x = x.astype(int)
+    y = np.round((rho - originy * np.sin(theta)) / np.cos(theta))
+    y = y.astype(int)
+    line_start = [-1, -1]
+    line_stop = [-1, -1]
+    length = 0
+    ok = False
+    gap_len = 0
+    lines = []
+    if not (theta<deg2rad(45) and theta>deg2rad(-45)):
+        for i in range(x.size):
+            first = np.arange(x[i]-tolerancy, x[i]+tolerancy+1)
+            second = np.arange(originx[i]-tolerancy, originx[i]+tolerancy+1)
+            
+            second = second[first>=0]
+            first = first[first>=0]
+            
+            second = second[first<x.size]
+            first = first[first<x.size]
+            
+            mat = img_edges[first, second]
+            mat = mat>0
+            if np.any(mat):
+                if ok == False:
+                    line_start = np.array([x[i], originx[i]])
+                    ok = True
+                line_stop = np.array([x[i], originx[i]])
+                length = length + 1 + gap_len
+                gap_len = 0
+            else:
+                if ok == True:
+                    gap_len = gap_len + 1
+            
+            if gap_len > max_gaps:
+                ok=False
+                gap_len = 0
+                if length > min_size:
+                    lines = lines + [[line_start, line_stop]]
+                length = 0
+    else:
+        for i in range(y.size):
+            first = np.arange(originy[i]-tolerancy, originy[i]+tolerancy+1)
+            second = np.arange(y[i]-tolerancy, y[i]+tolerancy+1)
+            
+            first = first[second>=0]
+            second = second[second>=0]
+            
+            first = first[second<y.size]
+            second = second[second<y.size]
+            
+            mat = img_edges[first, second]
+            mat = mat>0
+            if np.any(mat):
+                if ok == False:
+                    line_start = np.array([originy[i], y[i]])
+                    ok = True
+                line_stop = np.array([originy[i], y[i]])
+                length = length + 1 + gap_len
+                gap_len = 0
+            else:
+                if ok == True:
+                    gap_len = gap_len + 1
+            
+            if gap_len > max_gaps:
+                ok=False
+                gap_len = 0
+                if length > min_size:
+                    lines = lines + [[line_start, line_stop]]
+                length = 0
+    return lines
 
 def extract_time(img_in: np.array) -> tuple:
     canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
@@ -178,16 +254,23 @@ def extract_time(img_in: np.array) -> tuple:
     origin = np.array((0, img_in.shape[1]))
     for _, angle, dist in zip(intensity, peak_angles, peak_distances):
         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+        print(get_line_segments(canny, np.array([angle, dist]), 90, 7, 1))
         # a = np.cos(angle) / np.sin(angle), b = distance/np.sin(angle)
         axes.plot(origin, (y0, y1), '-r')
     axes.set_xlim(origin)
     axes.set_ylim((img_in.shape[0], 0))
-    axes.set_axis_off()
+    # axes.set_axis_off()
     plt.show()
-
+    # line_lengths = []
+    # for _, angle, dist in zip(intensity, peak_angles, peak_distances):
+    #     lines = get_line_elements(canny, np.array(angle, dist), 15, 7, 1)
+    #     for line in lines:
+    #         line_length = sqrt(line[0]**2 + line[1]**2)
+    #         line_lengths = line_lengths + [line_length]
+            
 
 if __name__ == "__main__":
-    img_in = imread('../sekvence/clocks/clock1.png')
+    img_in = imread('../sekvence/clocks/clock2.png')
     img_in = color.rgb2gray(img_in)
     img_in = skimage.img_as_float(img_in)
     extract_time(img_in)
