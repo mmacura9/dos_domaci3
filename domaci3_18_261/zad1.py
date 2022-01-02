@@ -49,7 +49,6 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     io.imshow(angle, cmap='gray')
 
     # quantization
-
     horizontal = ((angle > -22.5) * (angle < 22.5) +
                   (angle < -157.5) + (angle > 157.5))
     plt.figure()
@@ -74,7 +73,7 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     edges_horizontal = np.copy(img_horizontal)
     for i in range(1, img_horizontal.shape[0]-1):
         for j in range(1, img_horizontal.shape[1]-1):
-            if img_horizontal[i, j] <= img_horizontal[i, j-1] or img_horizontal[i, j] <= img_horizontal[i, j+1]:
+            if img_horizontal[i, j] < img_horizontal[i, j-1] or img_horizontal[i, j] < img_horizontal[i, j+1]:
                 edges_horizontal[i, j] = 0
 
     img_vertical = vertical * magnitude
@@ -82,21 +81,21 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
 
     for i in range(1, img_vertical.shape[0]-1):
         for j in range(1, img_vertical.shape[1]-1):
-            if img_vertical[i, j] <= img_vertical[i-1, j] or img_vertical[i, j] <= img_vertical[i+1, j]:
+            if img_vertical[i, j] < img_vertical[i-1, j] or img_vertical[i, j] < img_vertical[i+1, j]:
                 edges_vertical[i, j] = 0
 
     img_45 = diag_45 * magnitude
     edges_45 = np.copy(img_45)
     for i in range(1, img_45.shape[0]-1):
         for j in range(1, img_45.shape[1]-1):
-            if img_45[i, j] <= img_45[i-1, j-1] or img_45[i, j] <= img_45[i+1, j+1]:
+            if img_45[i, j] < img_45[i-1, j-1] or img_45[i, j] < img_45[i+1, j+1]:
                 edges_45[i, j] = 0
 
     img45 = diag45 * magnitude
     edges45 = np.copy(img45)
     for i in range(1, img45.shape[0]-1):
         for j in range(1, img45.shape[1]-1):
-            if img45[i, j] <= img45[i-1, j+1] or img45[i, j] <= img45[i+1, j-1]:
+            if img45[i, j] < img45[i-1, j+1] or img45[i, j] < img45[i+1, j-1]:
                 edges45[i, j] = 0
 
     plt.figure(figsize=(12, 9), dpi=80)
@@ -167,14 +166,30 @@ def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_ga
     tuple_output = []
     img = output(img_edges)
 
+def extract_time(img_in: np.array) -> tuple:
+    canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
+    
+    [out, angles, distances] = skimage.transform.hough_line(canny)
+    [intensity, peak_angles, peak_distances] = skimage.transform.hough_line_peaks(out, angles=angles, dists=distances, min_distance=20, threshold=0.4*amax(out), num_peaks=5)
+    
+    fix, axes = plt.subplots(1, 1, figsize=(20, 8))
+    axes.imshow(canny, cmap=plt.cm.gray)
+    axes.set_title('Input image with detected lines')
+    origin = np.array((0, img_in.shape[1]))
+    for _, angle, dist in zip(intensity, peak_angles, peak_distances):
+        y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
+        # a = np.cos(angle) / np.sin(angle), b = distance/np.sin(angle)
+        axes.plot(origin, (y0, y1), '-r')
+    axes.set_xlim(origin)
+    axes.set_ylim((img_in.shape[0], 0))
+    axes.set_axis_off()
+    plt.show()
+
+
 if __name__ == "__main__":
-    img_in = imread('../sekvence/clocks/clock8.jpg')
+    img_in = imread('../sekvence/clocks/clock1.png')
     img_in = color.rgb2gray(img_in)
     img_in = skimage.img_as_float(img_in)
-    canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
-    theta = 139
-    rho = cos(math.radians(theta-45)) * \
-        sqrt(canny.shape[0]*canny.shape[0] + canny.shape[1]*canny.shape[1])/2
-    get_line_segments(canny, np.array([theta, rho]), 5, 2, 2)
+    extract_time(img_in)
     # plt.figure()
     # io.imshow(img_in)
