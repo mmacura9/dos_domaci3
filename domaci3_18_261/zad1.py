@@ -146,25 +146,6 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
 
 
 def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_gaps: int, tolerancy: int) -> tuple:
-    # theta = math.radians(line[0])
-    # rho = line[1]
-    # y = np.arange(img_edges.shape[1]*1.)
-    # x = np.arange(img_edges.shape[0]*1.)
-    # matx = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
-    # maty = np.zeros((img_edges.shape[0], img_edges.shape[1]), dtype=float)
-    # for i in range(img_edges.shape[0]):
-    #     maty[i, :] = y
-    #     matx[:, i] = x
-    # output = (matx*cos(theta)+maty*sin(theta)) >= rho - tolerancy
-    # output = logical_and(output, (matx*cos(theta)+maty *
-    #                      sin(theta)) <= rho + tolerancy)
-    # plt.figure(figsize=(12, 9), dpi=80)
-    # io.imshow(output*1., cmap='gray')
-
-    # plt.figure(figsize=(12, 9), dpi=80)
-    # io.imshow(output*img_edges, cmap='gray')
-    # tuple_output = []
-    # img = output(img_edges)
     theta = line[0]
     rho = line[1]
     originy = np.arange(tolerancy, img_edges.shape[0]-tolerancy)
@@ -188,12 +169,12 @@ def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_ga
             second = second[first>=0]
             first = first[first>=0]
             
-            second = second[first<x.size]
-            first = first[first<x.size]
+            second = second[first<img_edges.shape[0]]
+            first = first[first<img_edges.shape[0]]
             
             mat = img_edges[first, second]
             mat = mat>0
-            if np.any(mat):
+            if np.any(mat) and mat.size>0:
                 if ok == False:
                     line_start = np.array([x[i], originx[i]])
                     ok = True
@@ -218,8 +199,8 @@ def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_ga
             first = first[second>=0]
             second = second[second>=0]
             
-            first = first[second<y.size]
-            second = second[second<y.size]
+            first = first[second<img_edges.shape[1]]
+            second = second[second<img_edges.shape[1]]
             
             mat = img_edges[first, second]
             mat = mat>0
@@ -245,34 +226,128 @@ def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_ga
 def extract_time(img_in: np.array) -> tuple:
     canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
     
+    ok=False
+    left = 0
+    s = 0
+    for i in range(canny.shape[0]):
+        if np.sum(canny[i, :]) != 0 and ok == False:
+            s = i
+            ok = True
+        if np.sum(canny[i, :]) == 0 and ok == True:
+            canny = canny[s:i, :]
+            break
+    ok=False
+    left = 0
+    s = 0
+    for i in range(canny.shape[1]):
+        if np.sum(canny[:, i]) != 0 and ok == False:
+            ok = True
+            s = i
+        if np.sum(canny[:, i]) == 0 and ok == True:
+            st = i
+            canny = canny[:, s:i]
+            break
+    plt.figure(figsize=(12, 9), dpi=80)
+    io.imshow(canny, cmap='gray')
+    
     [out, angles, distances] = skimage.transform.hough_line(canny)
     [intensity, peak_angles, peak_distances] = skimage.transform.hough_line_peaks(out, angles=angles, dists=distances, min_distance=20, threshold=0.4*amax(out), num_peaks=5)
+    
+    line_lengths = []
     
     fix, axes = plt.subplots(1, 1, figsize=(20, 8))
     axes.imshow(canny, cmap=plt.cm.gray)
     axes.set_title('Input image with detected lines')
     origin = np.array((0, img_in.shape[1]))
+    max1 = -1
+    ang1 = -1
+    right_half1 = False
+    top_half1 = False
+    max2 = -1
+    ang2 = -1
+    right_half2 = False
+    top_half2 = False
+    
     for _, angle, dist in zip(intensity, peak_angles, peak_distances):
         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
-        print(get_line_segments(canny, np.array([angle, dist]), 90, 7, 1))
-        # a = np.cos(angle) / np.sin(angle), b = distance/np.sin(angle)
+        lines = get_line_segments(canny, np.array([angle, dist]), 60, 10, 1)
+        for line in lines:
+            if not line[0][0] in range(round(canny.shape[0]/2)-20, round(canny.shape[0]/2)+20) and not line[1][0] in range(round(canny.shape[0]/2)-20, round(canny.shape[0]/2)+20):
+                break
+            right_half = False
+            top_half = False
+            if (line[0][1] + line[1][1])/2 > canny.shape[1]/2:
+                right_half = True
+            if (line[0][0] + line[1][0])/2 < canny.shape[0]/2:
+                top_half = True
+            line_length = sqrt((line[0][0]- line[1][0])**2 + (line[0][1]-line[1][1])**2)
+            line_lengths = line_lengths + [line_length]
+            if max1 == -1:
+                max1 = line_length
+                ang1 = angle
+                right_half1 = right_half
+                top_half1 = top_half
+            else:
+                if max1 > line_length and max2 < line_length:
+                    max2 = line_length
+                    ang2 = angle
+                    right_half2 = right_half
+                    top_half2 = top_half
+            if line_length> max1:
+                max2 = max1
+                ang2 = ang1
+                right_half2 = right_half1
+                top_half2 = top_half1
+                max1 = line_length
+                ang1 = angle
+                right_half1 = right_half
+                top_half1 = top_half
         axes.plot(origin, (y0, y1), '-r')
+    if max2 == -1:
+        max2 = max1
+        ang2 = ang1
+        right_half2 = right_half1
+        top_half2 = top_half1
     axes.set_xlim(origin)
     axes.set_ylim((img_in.shape[0], 0))
     # axes.set_axis_off()
+    
     plt.show()
-    # line_lengths = []
-    # for _, angle, dist in zip(intensity, peak_angles, peak_distances):
-    #     lines = get_line_elements(canny, np.array(angle, dist), 15, 7, 1)
-    #     for line in lines:
-    #         line_length = sqrt(line[0]**2 + line[1]**2)
-    #         line_lengths = line_lengths + [line_length]
-            
+    ang_minutes = ang1
+    if ang1>0:
+        if right_half1 or top_half1:
+            ang_minutes = ang1
+        else:
+            ang_minutes = deg2rad(180) + ang1
+    else:
+        if right_half1 or not top_half:
+            ang_minutes = deg2rad(180) + ang1
+        else:
+            ang_minutes = deg2rad(360) + ang1
+    
+    minutes = round(ang_minutes/deg2rad(360)*60)
+    ang_hours = ang2
+    if ang2>0:
+        if right_half2 or top_half2:
+            ang_hours = ang2
+        else:
+            ang_hours = deg2rad(180) + ang2
+    else:
+        if right_half2 or not top_half2:
+            ang_hours = deg2rad(180) + ang2
+        else:
+            ang_hours = deg2rad(360) + ang2
+    
+    hours = int(floor(ang_hours/deg2rad(360)*12))
+    if hours == 0:
+        hours = 12
+    return hours, minutes
 
 if __name__ == "__main__":
-    img_in = imread('../sekvence/clocks/clock2.png')
+    img_in = imread('../sekvence/clocks/clock6.png')
+    
     img_in = color.rgb2gray(img_in)
     img_in = skimage.img_as_float(img_in)
-    extract_time(img_in)
+    print(extract_time(img_in))
     # plt.figure()
     # io.imshow(img_in)
