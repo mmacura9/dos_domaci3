@@ -19,8 +19,8 @@ import math
 def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, threshold_high: float) -> np.array:
     # filtering the input image
     img = filters.gaussian(img_in, sigma=sigma, truncate=3)
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(img)
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(img)
 
     # gradients
     sobel_vertical = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])/8
@@ -29,45 +29,45 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
     gradient_vertical = ndimage.correlate(img, sobel_vertical)
     gradient_horizontal = ndimage.correlate(img, sobel_horizontal)
     # vertical gradient
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(gradient_vertical, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(gradient_vertical, cmap='gray')
 
     # horizontal gradient
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(gradient_horizontal, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(gradient_horizontal, cmap='gray')
 
     magnitude = np.sqrt(np.square(gradient_vertical) +
                         np.square(gradient_horizontal))
     angle = np.rad2deg(np.arctan2(gradient_vertical, gradient_horizontal))
 
     # magnitude
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(magnitude, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(magnitude, cmap='gray')
 
     # angle
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(angle, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(angle, cmap='gray')
 
     # quantization
     horizontal = ((angle > -22.5) * (angle < 22.5) +
                   (angle < -157.5) + (angle > 157.5))
-    plt.figure()
-    io.imshow(horizontal*1.)
+    # plt.figure()
+    # io.imshow(horizontal*1.)
 
     vertical = ((angle > 67.5) * (angle < 112.5)) + \
         ((angle < -67.5) * (angle > -112.5))
-    plt.figure()
-    io.imshow(vertical*1.)
+    # plt.figure()
+    # io.imshow(vertical*1.)
 
     diag45 = ((angle > 112.5) * (angle < 157.5)) + \
         ((angle < -22.5) * (angle > -67.5))
-    plt.figure()
-    io.imshow(diag45*1.)
+    # plt.figure()
+    # io.imshow(diag45*1.)
 
     diag_45 = ((angle > 22.5) * (angle < 67.5)) + \
         ((angle < -112.5) * (angle > -157.5))
-    plt.figure()
-    io.imshow(diag_45*1.)
+    # plt.figure()
+    # io.imshow(diag_45*1.)
 
     img_horizontal = horizontal * magnitude
     edges_horizontal = np.copy(img_horizontal)
@@ -98,22 +98,22 @@ def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, t
             if img45[i, j] < img45[i-1, j+1] or img45[i, j] < img45[i+1, j-1]:
                 edges45[i, j] = 0
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(edges_horizontal, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(edges_horizontal, cmap='gray')
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(edges_vertical, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(edges_vertical, cmap='gray')
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(edges45, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(edges45, cmap='gray')
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(edges_45, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(edges_45, cmap='gray')
 
     edges = edges_horizontal + edges_vertical + edges45 + edges_45
 
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(edges, cmap='gray')
+    # plt.figure(figsize=(12, 9), dpi=80)
+    # io.imshow(edges, cmap='gray')
 
     # the final
     output = (edges > threshold_low) * (edges < threshold_high)
@@ -224,7 +224,10 @@ def get_line_segments(img_edges: np.array, line: np.array, min_size: int, max_ga
     return lines
 
 def extract_time(img_in: np.array) -> tuple:
-    canny = canny_edge_detection(img_in, 0.5, 0.2, 0.55)
+    canny = canny_edge_detection(img_in, 0.7, 0.2, 0.55)
+    
+    plt.figure(figsize=(12, 9), dpi=80)
+    io.imshow(canny, cmap='gray')
     
     ok=False
     left = 0
@@ -250,6 +253,11 @@ def extract_time(img_in: np.array) -> tuple:
     plt.figure(figsize=(12, 9), dpi=80)
     io.imshow(canny, cmap='gray')
     
+    canny[canny<np.max(canny)*3/4] = 0
+
+    plt.figure(figsize=(12, 9), dpi=80)
+    io.imshow(canny, cmap='gray')
+    
     [out, angles, distances] = skimage.transform.hough_line(canny)
     [intensity, peak_angles, peak_distances] = skimage.transform.hough_line_peaks(out, angles=angles, dists=distances, min_distance=20, threshold=0.4*amax(out), num_peaks=5)
     
@@ -272,8 +280,9 @@ def extract_time(img_in: np.array) -> tuple:
         y0, y1 = (dist - origin * np.cos(angle)) / np.sin(angle)
         lines = get_line_segments(canny, np.array([angle, dist]), 60, 10, 1)
         for line in lines:
-            if not line[0][0] in range(round(canny.shape[0]/2)-20, round(canny.shape[0]/2)+20) and not line[1][0] in range(round(canny.shape[0]/2)-20, round(canny.shape[0]/2)+20):
-                break
+            if not line[0][0] in range(round(canny.shape[0]/2)-30, round(canny.shape[0]/2)+30) and not line[1][0] in range(round(canny.shape[0]/2)-30, round(canny.shape[0]/2)+30):
+                if not line[0][1] in range(round(canny.shape[1]/2)-30, round(canny.shape[1]/2)+30) and not line[1][1] in range(round(canny.shape[1]/2)-30, round(canny.shape[1]/2)+30):
+                    break
             right_half = False
             top_half = False
             if (line[0][1] + line[1][1])/2 > canny.shape[1]/2:
@@ -315,12 +324,12 @@ def extract_time(img_in: np.array) -> tuple:
     plt.show()
     ang_minutes = ang1
     if ang1>0:
-        if right_half1 or top_half1:
+        if (top_half1 and ang1 >= deg2rad(-45) and ang1 <= deg2rad(45)) or (right_half1 and ((ang1 >= deg2rad(45)and ang1 <= deg2rad(90)) or (ang1 >= deg2rad(-90)and ang1<=deg2rad(-45)))):
             ang_minutes = ang1
         else:
             ang_minutes = deg2rad(180) + ang1
     else:
-        if right_half1 or not top_half:
+        if (not top_half1 and ang1 >= deg2rad(-45) and ang1 <= deg2rad(45)) or (right_half1 and ((ang1>=deg2rad(45) and ang1<=deg2rad(90)) or (ang1 >= deg2rad(-90) and ang1 <= deg2rad(-45)))):
             ang_minutes = deg2rad(180) + ang1
         else:
             ang_minutes = deg2rad(360) + ang1
@@ -328,23 +337,26 @@ def extract_time(img_in: np.array) -> tuple:
     minutes = round(ang_minutes/deg2rad(360)*60)
     ang_hours = ang2
     if ang2>0:
-        if right_half2 or top_half2:
+        if (top_half2 and ang2 >= deg2rad(-45) and ang2 <= deg2rad(45)) or ((right_half2 and ((ang2 >= deg2rad(45)and ang2 <= deg2rad(90)) or (ang2 >=deg2rad(-90) and ang2 <= deg2rad(-45))))):
             ang_hours = ang2
         else:
             ang_hours = deg2rad(180) + ang2
     else:
-        if right_half2 or not top_half2:
+        if (not top_half2 and ang2 >= deg2rad(-45) and ang2 <= deg2rad(45)) or (right_half2 and ((ang2 >= deg2rad(45) and ang2 <= deg2rad(90)) or (ang2 >= deg2rad(-90) and ang2 <= deg2rad(-45)))):
             ang_hours = deg2rad(180) + ang2
         else:
             ang_hours = deg2rad(360) + ang2
     
     hours = int(floor(ang_hours/deg2rad(360)*12))
+    if minutes == 60:
+        hours = hours+1
+        minutes=0
     if hours == 0:
         hours = 12
     return hours, minutes
 
 if __name__ == "__main__":
-    img_in = imread('../sekvence/clocks/clock6.png')
+    img_in = imread('../sekvence/clocks/clock9.png')
     
     img_in = color.rgb2gray(img_in)
     img_in = skimage.img_as_float(img_in)
