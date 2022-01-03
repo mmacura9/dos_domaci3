@@ -14,7 +14,7 @@ from scipy.signal import find_peaks
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-
+import os, sys
 
 def canny_edge_detection(img_in: np.array, sigma: float, threshold_low: float, threshold_high: float) -> np.array:
     # filtering the input image
@@ -536,6 +536,8 @@ def extract_time(img_in: np.array) -> tuple:
 #     return hours, minutes, seconds
 
 if __name__ == "__main__":
+    dirs = os.listdir('../sekvence/clocks/')
+    print(dirs)
     img_in = imread('../sekvence/clocks/clock8.jpg')
     
     img_in = color.rgb2gray(img_in)
