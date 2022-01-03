@@ -105,20 +105,10 @@ def bw_label(img_bin: np.array) -> np.array:
                     label[i, j] = last_ind
                     last_ind = last_ind+1
     
-    random.seed(10)
-    
-    img_colored = np.zeros((label.shape[0], label.shape[1], 3), dtype=float)
-    
-    for i in range(1, last_ind):
-        r = random.random()
-        g = random.random()
-        b = random.random()
-        img_colored[label == i, 0] = r
-        img_colored[label == i, 1] = g
-        img_colored[label == i, 2] = b
-    
-    plt.figure(figsize=(12, 9), dpi=80)
-    io.imshow(img_colored)
+    for i in range(last_ind):
+        while np.sum(label==i)==0:
+            label[label>i] = label[label>i]-1
+            
     return label
 
 def coin_classification(img_in: np.array) -> []:
